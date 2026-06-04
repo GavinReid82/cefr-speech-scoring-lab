@@ -12,8 +12,10 @@ correlation, quadratic weighted kappa, scorer consistency, fairness slices, and 
 
 ## Status
 
-Early setup. Design doc approved 2026-06-04; gate questions (score scale, label
-structure, gold transcripts) answered from corpus metadata — see `reports/` as they land.
+Vertical slice complete: 100 dev responses end-to-end (Whisper → fluency features →
+Ridge vs baselines), first results QWK 0.62 / r 0.67 against human scores — see
+`notebooks/01_vertical_slice.ipynb`. Design and roadmap: `docs/design.md`. Data
+verification: `reports/data_gates.md`. Session log: `JOURNAL.md`.
 
 ## Data and licence
 
