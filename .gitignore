@@ -1,0 +1,25 @@
+# LICENCE RULE: the Speak & Improve Corpus 2025 is research-licensed.
+# No audio, transcripts, or per-speaker data may ever be committed.
+# data/ is excluded from commit zero — do not weaken this.
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Notebooks: checkpoints only (committed notebooks must have data-leaking outputs cleared)
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Local artefacts
+*.log
+.env
