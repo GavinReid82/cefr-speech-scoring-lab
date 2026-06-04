@@ -11,7 +11,10 @@ All figures here are aggregates; no learner data is reproduced.
 - **Per-part scores** (parts P1, P3, P4, P5) are manual scores at **0.5 intervals**.
 - **Overall score** = mean of the four part scores → 0.125 gradation.
 - Scoring criteria are modelled on the Linguaskill Speaking Global Assessment Criteria.
-- Dev set: **438 speakers** with overall + per-part scores.
+- Dev set: **438 speakers**, **5,616 utterance-level audio files** (verified against the
+  union of all dev file lists after download). Parts differ in shape: P1 ≈ several short
+  question responses per speaker (2,575 files), P3/P4 = one long turn each (438 files
+  each), P5 ≈ several responses (2,165 files). Scores exist per part and overall.
 
 **Implication:** quadratic weighted kappa is computed on per-part ordinal scores
 (or band-binned scores); RMSE/MAE on the continuous overall score; the per-band
