@@ -1,0 +1,11 @@
+# Vertical slice (notebook 01). Heavier deps (torch, librosa, parselmouth) arrive
+# with later notebooks — keep the first install light and fast.
+faster-whisper>=1.0     # CTranslate2 Whisper: ~8-10x realtime on M-series CPU, no torch needed yet
+pandas>=2.0
+scikit-learn>=1.4
+scipy>=1.11
+matplotlib>=3.8
+soundfile>=0.12         # read flac headers for durations
+jupyterlab>=4.0
+ipykernel
+nbconvert               # headless notebook execution
