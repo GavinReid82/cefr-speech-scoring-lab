@@ -12,10 +12,13 @@ correlation, quadratic weighted kappa, scorer consistency, fairness slices, and 
 
 ## Status
 
-Vertical slice complete: 100 dev responses end-to-end (Whisper → fluency features →
-Ridge vs baselines), first results QWK 0.62 / r 0.67 against human scores — see
-`notebooks/01_vertical_slice.ipynb`. Design and roadmap: `docs/design.md`. Data
-verification: `reports/data_gates.md`. Session log: `JOURNAL.md`.
+Vertical slice complete, ASR error analysis done: 100 dev responses end-to-end
+(Whisper → fluency + prosody features → Ridge vs baselines), best result
+**QWK 0.65 / r 0.66** with MTLD lexical diversity
+(`notebooks/02_wer_and_prosody.ipynb`); whisper-small WER 16.8% vs gold,
+rising for weaker speakers — the seed of the fairness analysis. Slice results:
+`notebooks/01_vertical_slice.ipynb`. Design and roadmap: `docs/design.md`.
+Data verification: `reports/data_gates.md`. Session log: `JOURNAL.md`.
 
 ## Data and licence
 
