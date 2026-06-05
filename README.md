@@ -19,7 +19,8 @@ earlier n=100 figure (0.65) was small-sample optimism, corrected here
 deliberately. Key findings: the scorer compresses the scale (over-scores weak
 candidates +0.96, under-scores strong ones −0.70); ASR error does *not*
 independently propagate into scoring error (partial correlation ≈ 0 controlling
-for proficiency); 81.5% of predictions within half a band. Notebooks: `01`–`04`.
+for proficiency); 81.5% of predictions within half a band. Notebooks: `01`–`04`. **Deliverables:
+`reports/model_card.md` and `reports/evaluation_report.md`.**
 Design: `docs/design.md`. Session log: `JOURNAL.md`.
 
 ## Data and licence
@@ -33,9 +34,9 @@ all committed reports contain aggregate figures only. See `data/README.md`
 ## Structure
 
 ```
-notebooks/   01–04 (frozen session records) → reports next
+notebooks/   01–04 (frozen session records)
 src/         speechlab: data, asr, acoustic_features, text_features, scoring_models, evaluation
 scripts/     download_dev_audio, transcribe_dev, extract_prosody (resumable)
 tests/       pytest on synthetic fixtures (no corpus data)
-reports/     data_gates → model_card, evaluation_report, error_analysis to come
+reports/     data_gates, model_card, evaluation_report
 ```
