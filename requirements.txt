@@ -13,3 +13,7 @@ nbconvert               # headless notebook execution
 # Notebook 02: WER + acoustic/prosody features
 jiwer>=4.0              # WER / word alignment against gold STM transcripts
 praat-parselmouth>=0.4  # Praat bindings: pitch (F0) and intensity contours
+
+# Notebook 03: full dev set, non-linear models
+torch>=2.0              # small MLP regressor (speechlab.scoring_models)
+pytest>=8.0             # test suite (tests/, synthetic fixtures only)
