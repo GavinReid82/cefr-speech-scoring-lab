@@ -12,15 +12,15 @@ correlation, quadratic weighted kappa, scorer consistency, fairness slices, and 
 
 ## Status
 
-Vertical slice complete, ASR error analysis done: 100 dev responses end-to-end
-(Whisper → fluency + prosody features → Ridge vs baselines), best result
-**QWK 0.65 / r 0.66** with MTLD lexical diversity
-(`notebooks/02_wer_and_prosody.ipynb`); whisper-small WER 16.8% vs gold,
-rising for weaker speakers — the seed of the fairness analysis. Code now lives in
-an installable `speechlab` package (`src/`, 23 synthetic-fixture tests); full
-dev-set transcription in progress. Slice results:
-`notebooks/01_vertical_slice.ipynb`. Design and roadmap: `docs/design.md`.
-Data verification: `reports/data_gates.md`. Session log: `JOURNAL.md`.
+Four notebooks in: vertical slice → WER/prosody → full-scale models → error
+analysis & fairness. Honest headline on the full long-turn dev set (876
+responses, **speaker-grouped CV**): Random Forest **QWK 0.56** / r 0.62 — the
+earlier n=100 figure (0.65) was small-sample optimism, corrected here
+deliberately. Key findings: the scorer compresses the scale (over-scores weak
+candidates +0.96, under-scores strong ones −0.70); ASR error does *not*
+independently propagate into scoring error (partial correlation ≈ 0 controlling
+for proficiency); 81.5% of predictions within half a band. Notebooks: `01`–`04`.
+Design: `docs/design.md`. Session log: `JOURNAL.md`.
 
 ## Data and licence
 
@@ -33,9 +33,9 @@ all committed reports contain aggregate figures only. See `data/README.md`
 ## Structure
 
 ```
-notebooks/   01_vertical_slice, 02_wer_and_prosody (frozen session records) → 03_models next
-src/         speechlab: data, asr, acoustic_features, text_features, evaluation
-scripts/     download_dev_audio, transcribe_dev (resumable)
+notebooks/   01–04 (frozen session records) → reports next
+src/         speechlab: data, asr, acoustic_features, text_features, scoring_models, evaluation
+scripts/     download_dev_audio, transcribe_dev, extract_prosody (resumable)
 tests/       pytest on synthetic fixtures (no corpus data)
 reports/     data_gates → model_card, evaluation_report, error_analysis to come
 ```
