@@ -1,6 +1,6 @@
 """Synthetic STM text and hand-written hypotheses — no corpus data."""
 
-from speechlab.asr import parse_stm, wer_pair
+from speechlab.asr import parse_stm, parse_stm_tags, wer_pair
 
 STM = """;; comment line
 UTT1 1 SPK1 0.00 5.00 <o,Q1,C,P3> the cat (%hesitation%) sat
@@ -25,6 +25,18 @@ def test_parse_stm_sorts_out_of_order_segments(tmp_path):
         "U 1 S 0.00 5.00 <o> first part\n"
     )
     assert parse_stm(path)["U"] == ["first", "part", "second", "part"]
+
+
+def test_parse_stm_tags_extracts_quality_grade_part(tmp_path):
+    path = tmp_path / "test.stm"
+    path.write_text(
+        "U1 1 S1 0.00 5.00 <o,Q4,B2,P3> some words\n"
+        "U1 1 S1 5.00 9.00 <o,Q4,B2,P3> more words\n"   # later segment ignored
+        "U2 1 S2 0.00 4.00 <o,QX,A2,P4> other words\n"
+    )
+    tags = parse_stm_tags(path)
+    assert tags["U1"] == {"quality": "Q4", "grade": "B2", "part": "P3"}
+    assert tags["U2"] == {"quality": "QX", "grade": "A2", "part": "P4"}
 
 
 def test_wer_perfect_hypothesis_lenient_zero():

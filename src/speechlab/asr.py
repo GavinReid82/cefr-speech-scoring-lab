@@ -26,6 +26,28 @@ def parse_stm(path: Path) -> dict[str, list[str]]:
             for u, v in segs.items()}
 
 
+def parse_stm_tags(path: Path) -> dict[str, dict]:
+    """Per-utterance category tags from the first STM segment line.
+
+    `<o,Q4,B2,P3>` -> {"quality": "Q4", "grade": "B2", "part": "P3"} — audio quality
+    (Q2–QX) and CEFR grade labels are the corpus's fairness-slice metadata.
+    """
+    out: dict[str, dict] = {}
+    for line in open(path):
+        if line.startswith(";;"):
+            continue
+        p = line.split(maxsplit=6)
+        if len(p) < 6 or p[0] in out:
+            continue
+        m = re.search(r"<([^>]*)>", p[5])
+        if not m:
+            continue
+        fields = m.group(1).split(",")
+        if len(fields) >= 4:
+            out[p[0]] = {"quality": fields[1], "grade": fields[2], "part": fields[3]}
+    return out
+
+
 def wer_pair(gold_tokens: list[str], hyp_text: str) -> dict:
     """WER of an ASR hypothesis against one gold disfluent-form transcript.
 
