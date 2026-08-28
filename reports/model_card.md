@@ -10,7 +10,7 @@ Following the structure of Mitchell et al. (2019), *Model Cards for Model Report
 | ASR | `whisper-small` via faster-whisper (CTranslate2, int8), word timestamps, English forced |
 | Features (17) | 11 fluency (speech/articulation rate, pause statistics, length of run, lexical diversity as MTLD, filled pauses), 5 prosody (pitch spread in semitones, voiced ratio, intensity spread via Praat/parselmouth), test-part indicator |
 | Model | `RandomForestRegressor` — 500 trees, `min_samples_leaf=5`, seed 42 |
-| Version / date | v0.1, 5 June 2026 (metrics unchanged; alternatives section added 27 August 2026) |
+| Version / date | v0.1, 5 June 2026 (metrics unchanged; alternatives section added 27 August 2026, its untrained floor 28 August 2026) |
 | Code | `src/speechlab/`, notebooks 01–05 in this repository |
 
 ## Intended use
@@ -45,6 +45,7 @@ none for RF). QWK computed on the 0.5-step grid. All figures are out-of-fold pre
 | MLP (PyTorch, default settings) | 0.483 | 0.580 | 0.475 |
 | LoRA transcript scorer (argmax) | 0.505 | 0.511 | 0.446 |
 | LoRA transcript scorer (expected) | 0.550 | 0.523 | 0.415 |
+| *same transcript scorer, untrained* | 0.228 | 0.886 | 0.144 |
 
 Agreement with human scores: **34.1% exact** (same 0.5 step), **81.5% within half a band**,
 **97.7% within one band**. Per part: QWK 0.604 (P3) vs 0.496 (P4).
@@ -87,6 +88,13 @@ locally under MLX as the licence requires) to emit a proficiency band from the t
 alone, then decoded ordinally over the band distribution. Under the identical
 speaker-grouped protocol and on identical held-out rows it reaches **QWK 0.446** (argmax) /
 **0.415** (expectation) — last of the four real arms and below the word-count floor.
+
+**The alternative was not undertrained.** Scored with the adapter removed — same prompt,
+same rows, no fitting — the base model reaches QWK 0.144, so the fine-tuning is worth
++0.302 and the arm's shortfall is a ceiling rather than a failed run. Untrained it places
+797 of 876 responses in the top band; naming the CEFR anchors in the prompt spreads the
+predictions over five bands and improves MAE without improving QWK, so the floor belongs
+to the model rather than to the label scheme.
 
 Three properties of that result bear on this model rather than only on the alternative:
 

@@ -25,9 +25,11 @@ evaluation surfaced five findings that matter more than the headline:
    mostly measuring how much candidates say.
 5. **Whisper erases the disfluency signal entirely** (100% of filled pauses), removing a
    cue that gold annotations show is predictive (r = −0.25).
-6. **Reading content did not help.** A 1.5B instruct model LoRA-fine-tuned on the
-   transcripts reaches QWK 0.446 on identical rows — below the word-count baseline, and
-   with *worse* scale compression than the feature-based scorer (§4).
+6. **Reading content did not help — but the training did.** A 1.5B instruct model
+   LoRA-fine-tuned on the transcripts reaches QWK 0.446 on identical rows — below the
+   word-count baseline, and with *worse* scale compression than the feature-based scorer.
+   Untrained, the same model scores 0.144, so fine-tuning is worth +0.302 and the arm's
+   weakness is its ceiling, not a failed training run (§4).
 
 ## 2. System under evaluation
 
@@ -71,6 +73,8 @@ available**; model–human agreement below cannot be benchmarked against inter-r
 | MLP (PyTorch) | 0.483 | 0.486 | 0.580 | 0.727 | 0.475 |
 | LoRA transcript scorer (argmax) | 0.505 | 0.529 | 0.511 | 0.670 | 0.446 |
 | LoRA transcript scorer (expected) | 0.550 | 0.559 | 0.523 | 0.647 | 0.415 |
+| *same model untrained* (expected) | 0.228 | 0.233 | 0.886 | 1.076 | 0.144 |
+| *same model untrained* (argmax) | 0.151 | 0.145 | 1.525 | 1.689 | 0.072 |
 
 - The word-count baseline is the most important row: features beyond quantity-of-speech buy
   +0.058 QWK. Any claimed improvement to this system should be benchmarked against word
@@ -89,6 +93,21 @@ available**; model–human agreement below cannot be benchmarked against inter-r
   forest arms. The claim is scoped to this scale: 1.5B at rank 8 on 876 responses is the
   smallest credible version of the experiment, not a result about content features
   in general.
+- **Every arm needs its own floor, and this one was published without it.** The two rows
+  above were added after the fine-tuned arm had already been written up, when the obvious
+  reader's question — did the fine-tuning help? — turned out to be unanswerable from the
+  table. It was not: 0.446 had only ever been compared against a *different pipeline*.
+  Scoring the same model with the adapter removed puts the untrained floor at QWK 0.144,
+  so the LoRA is worth **+0.302** and the arm's problem is its ceiling rather than its
+  training. Untrained, the model assigns 797 of 876 responses to the top band and the
+  remaining 79 to the bottom one; naming the CEFR anchors in the prompt (rather than the
+  deliberately blank `A`–`H` labels that fine-tuning wants) spreads the predictions across
+  five bands and improves MAE to 0.728 without improving QWK, which confirms the floor is
+  the model's and not the labelling's. Two cautions for reading the table above: prediction
+  range is uninformative when a decode uses two of eight bands (the untrained argmax spans
+  the full 3.5), and predicted spread is not calibration — the untrained expectation decode
+  has sd 0.594 against the fine-tuned 0.391 and the human 0.733, while ranking three times
+  worse.
 - Per part: QWK 0.604 (P3) vs 0.496 (P4) with the same features and speakers — the model
   *ranks* P4 responses less well, while error size and bias are comparable
   (MAE 0.43 vs 0.48, signed error ≈ 0 for both).
@@ -198,12 +217,16 @@ stated rather than silently skipped. The supported slices:
 
 ## 9. Recommendations
 
-1. Any future model change must beat the **word-count baseline**, reported alongside.
+1. Any future model change must beat the **word-count baseline**, reported alongside —
+   *and* report its own untrained or ablated floor. The two are different questions and
+   §4 shipped the second one unanswered: the LoRA arm's headline was compared only against
+   other pipelines, which cannot say whether the training did anything.
 2. Apply and evaluate a **calibration correction** for band compression before any
    stakes-adjacent use.
 3. ~~Add **content features**, then re-run the ASR-propagation analysis.~~ **Done (§4, §6).**
    A LoRA-fine-tuned transcript scorer reached QWK 0.446 against the forest's 0.558 —
-   below the word-count baseline — and the ASR-propagation null replicated under it. The
+   below the word-count baseline, though +0.302 above its own untrained floor — and the
+   ASR-propagation null replicated under it. The
    follow-ups this raises, in priority order: run the **clean transcript-quality control**
    (Whisper transcripts restricted to the same 589 gold-covered rows, so the arms differ
    only in transcript source, unlike the confounded ablation in §6); keep a

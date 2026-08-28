@@ -28,7 +28,9 @@ fine-tuned scorer reaches **QWK 0.446** (argmax) / 0.415 (expected) against
 Random Forest's 0.558, finishing below the word-count Ridge floor of 0.500; and
 the ASR-propagation null **replicates** under a scorer that reads nothing but the
 transcript (raw r = +0.16, partial r = −0.04). A negative result, reported as
-one. Notebooks: `01`–`05`. **Deliverables: `reports/model_card.md` and
+one — and measured against its own floor: the same model untrained scores QWK
+0.144, so the fine-tuning is worth +0.302 and the shortfall is a ceiling rather
+than a failed training run. Notebooks: `01`–`05`. **Deliverables: `reports/model_card.md` and
 `reports/evaluation_report.md`.**
 Design: `docs/design.md`. Session log: `JOURNAL.md`.
 
