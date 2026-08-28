@@ -12,6 +12,7 @@ import pytest
 from speechlab.llm_scorer import (
     EMPTY_TRANSCRIPT,
     assert_prompt_parity,
+    band_rubric,
     band_token_ids,
     build_prompt,
     build_record,
@@ -82,6 +83,29 @@ def test_training_and_inference_prompts_are_the_same_string(codec):
     # the JSONL row and the scoring call must not drift apart
     rec = build_record("hello there", "P4", 4.0, codec)
     assert rec["prompt"] == build_prompt("hello there", "P4", codec)
+
+
+def test_the_rubric_leaves_the_unanchored_prompt_byte_identical(codec):
+    # the untrained floor is only a floor for the trained arm if the two were scored on
+    # the same string; adding the rubric option must not perturb the default by a byte
+    assert build_prompt("hello there", "P4", codec) == (
+        "Rate the spoken English proficiency of this transcribed learner response.\n\n"
+        "Test part: P4\n"
+        "Transcript: hello there\n\n"
+        "Answer with a single letter from A (lowest) to H (highest)."
+    )
+
+
+def test_rubric_names_whole_bands_only(codec):
+    # the corpus scores at 0.5 intervals; CEFR has no name for the midpoint, and
+    # inventing one would put a label in the prompt that no rater ever used
+    rubric = band_rubric(codec)
+    assert rubric.startswith("A = A2, C = B1, E = B2, G = C1")
+    assert not any(f"{half} =" in rubric for half in ("B", "D", "F", "H"))
+
+    p = build_prompt("hello there", "P3", codec, rubric=True)
+    assert f"Scale: {rubric}" in p
+    assert "Transcript: hello there" in p and "A (lowest)" in p
 
 
 def test_completion_is_the_grid_snapped_class(codec):

@@ -18,10 +18,18 @@ subprocess per fold: its trainer is not worth reimplementing, and process isolat
 sidesteps mlx-lm's per-process LoRA state (`linear_to_lora_layers` raises on an
 already-converted layer, and its RNG seeding is global).
 
+`--zero-shot` skips training entirely and scores with base weights, which is the floor
+the fine-tuned arm should be read against: without it, "fine-tuning made it worse" is
+a comparison to a *different system* rather than to the same model untrained. Nothing
+is fitted, so every row is held out by construction and the fold loop only partitions
+the work — but it is the same loop over the same GroupKFold call, so the rows and folds
+match the trained arm structurally rather than by assertion.
+
 Usage:
     python scripts/finetune_lora.py                        # Whisper transcripts, 5 folds
     python scripts/finetune_lora.py --transcripts fluent   # gold-transcript ablation
     python scripts/finetune_lora.py --folds 0 --iters 100  # one short fold, for timing
+    python scripts/finetune_lora.py --zero-shot            # untrained baseline, no training
 """
 
 import argparse
@@ -148,12 +156,28 @@ def main() -> None:
     ap.add_argument("--scale", type=float, default=20.0)
     ap.add_argument("--dropout", type=float, default=0.05)
     ap.add_argument("--temperature", type=float, default=1.0, help="softmax dial for the decode")
+    ap.add_argument("--zero-shot", action="store_true",
+                    help="no training: score with base weights, the untrained floor")
+    ap.add_argument("--rubric", action="store_true",
+                    help="name the CEFR anchors in the prompt (for the untrained arm)")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--tag", help="cache name; defaults to <transcripts>_<model slug>")
     ap.add_argument("--force", action="store_true", help="retrain folds already cached")
     args = ap.parse_args()
 
-    tag = args.tag or f"{args.transcripts}_{args.model.split('/')[-1]}"
+    # write_fold_data builds training rows through build_record, which does not take the
+    # rubric flag — so training with --rubric would fit on plain prompts and score on
+    # anchored ones. assert_prompt_parity cannot catch that (it checks the built string
+    # against itself), so refuse the combination rather than lose QWK silently.
+    if args.rubric and not args.zero_shot:
+        raise SystemExit("--rubric is only supported with --zero-shot: the training data "
+                         "writer emits the unanchored prompt, so training with it would "
+                         "break prompt parity silently")
+
+    source_tag = "zeroshot" if args.zero_shot else args.transcripts
+    if args.rubric:
+        source_tag += "-rubric"
+    tag = args.tag or f"{source_tag}_{args.model.split('/')[-1]}"
     oof_path = DERIVED / f"lora_oof_{tag}.json"
     WORK.mkdir(parents=True, exist_ok=True)
 
@@ -167,7 +191,8 @@ def main() -> None:
     # a template that renders the training and inference paths differently costs QWK
     # silently, and this is the only place it can be caught cheaply.
     assert_prompt_parity(load_prompt_tokenizer(args.model), codec,
-                         build_prompt(df.transcript.iloc[0], df.part.iloc[0], codec),
+                         build_prompt(df.transcript.iloc[0], df.part.iloc[0], codec,
+                                      rubric=args.rubric),
                          codec.encode([df.score.iloc[0]])[0])
     print("prompt parity OK", flush=True)
 
@@ -176,6 +201,14 @@ def main() -> None:
         "tag": tag, "n_responses": len(df), "bands": codec.labels,
         "lo": codec.lo, "hi": codec.hi,
     }
+
+    # One scorer for the whole zero-shot run: with no adapter to swap there is nothing
+    # fold-specific about the weights, and reloading them five times would only cost time.
+    # Left unloaded — `band_logits` loads on first use, so a fully-cached re-run pulls no
+    # weights at all.
+    base_scorer = (LoRABandScorer(codec, model_path=args.model, adapter_path=None,
+                                  temperature=args.temperature)
+                   if args.zero_shot else None)
 
     splitter = GroupKFold(n_splits=args.n_splits)
     for k, (tr_idx, te_idx) in enumerate(splitter.split(df, groups=df.speaker)):
@@ -186,26 +219,33 @@ def main() -> None:
             continue
 
         train_df, test_df = df.iloc[tr_idx], df.iloc[te_idx]
-        # hold out whole speakers, not rows: the two parts of one speaker are two
-        # measurements of one proficiency, so splitting them would leak
-        speakers = train_df.speaker.drop_duplicates().sample(frac=1, random_state=args.seed + k)
-        n_val = max(int(len(speakers) * args.valid_frac), 1)
-        val_mask = train_df.speaker.isin(set(speakers[:n_val]))
 
-        rows = lambda d: list(zip(d.transcript, d.part, d.score))   # noqa: E731
-        fold_dir = WORK / tag / f"fold{k}"
-        data_dir, adapter_dir = fold_dir / "data", fold_dir / "adapter"
-        counts = write_fold_data(data_dir, rows(train_df[~val_mask]),
-                                 rows(train_df[val_mask]), codec)
-        print(f"== fold {k}: train {counts['train']} / valid {counts['valid']} / "
-              f"test {len(test_df)} ({test_df.speaker.nunique()} speakers)", flush=True)
+        if args.zero_shot:
+            print(f"== fold {k}: zero-shot, test {len(test_df)} "
+                  f"({test_df.speaker.nunique()} speakers)", flush=True)
+            scorer = base_scorer
+        else:
+            # hold out whole speakers, not rows: the two parts of one speaker are two
+            # measurements of one proficiency, so splitting them would leak
+            speakers = train_df.speaker.drop_duplicates().sample(frac=1,
+                                                                 random_state=args.seed + k)
+            n_val = max(int(len(speakers) * args.valid_frac), 1)
+            val_mask = train_df.speaker.isin(set(speakers[:n_val]))
 
-        train_fold(fold_config(data_dir, adapter_dir, args, args.seed + k),
-                   fold_dir / "config.yaml")
+            rows = lambda d: list(zip(d.transcript, d.part, d.score))   # noqa: E731
+            fold_dir = WORK / tag / f"fold{k}"
+            data_dir, adapter_dir = fold_dir / "data", fold_dir / "adapter"
+            counts = write_fold_data(data_dir, rows(train_df[~val_mask]),
+                                     rows(train_df[val_mask]), codec)
+            print(f"== fold {k}: train {counts['train']} / valid {counts['valid']} / "
+                  f"test {len(test_df)} ({test_df.speaker.nunique()} speakers)", flush=True)
 
-        scorer = LoRABandScorer(codec, model_path=args.model, adapter_path=str(adapter_dir),
-                                temperature=args.temperature)
-        out = scorer.score_batch([build_prompt(t, p, codec)
+            train_fold(fold_config(data_dir, adapter_dir, args, args.seed + k),
+                       fold_dir / "config.yaml")
+
+            scorer = LoRABandScorer(codec, model_path=args.model, adapter_path=str(adapter_dir),
+                                    temperature=args.temperature)
+        out = scorer.score_batch([build_prompt(t, p, codec, rubric=args.rubric)
                                   for t, p in zip(test_df.transcript, test_df.part)])
         cache["folds"][str(k)] = {
             "utt": list(test_df.utt),

@@ -54,19 +54,47 @@ def transcript_text(words: list[dict]) -> str:
     return " ".join(w["w"] for w in words).strip()
 
 
-def build_prompt(transcript: str, part: str, codec: BandCodec) -> str:
+# The corpus's 0–6 scale against CEFR, per reports/data_gates.md gate 1 (sla-marks/README).
+# Used only to anchor the rubric variant below; the codec itself stays scale-agnostic.
+CEFR_ANCHORS = {1.0: "A1", 2.0: "A2", 3.0: "B1", 4.0: "B2", 5.0: "C1"}
+
+
+def band_rubric(codec: BandCodec) -> str:
+    """The A..H letters tied to CEFR names, for whole-numbered bands only.
+
+    Half-steps are deliberately left unnamed: the corpus scores at 0.5 intervals but
+    CEFR has no name for the midpoint, and inventing one ('B1+') would put a label in
+    the prompt that no rater ever used.
+    """
+    named = [f"{lab} = {CEFR_ANCHORS[s]}"
+             for lab, s in zip(codec.labels, (round(float(g), 1) for g in codec.grid))
+             if s in CEFR_ANCHORS]
+    return ", ".join(named) + " (letters in between are the half-steps)"
+
+
+def build_prompt(transcript: str, part: str, codec: BandCodec, rubric: bool = False) -> str:
     """The single user message. Must be byte-identical between training and inference.
 
     Letters, not CEFR names: 'B2' carries pretrained baggage that the fine-tune would
     have to fight, whereas A..H arrives blank and only has to learn the ordering. The
     ordering is stated in the prompt so the labels are not arbitrary from the start.
+
+    `rubric=True` names the CEFR anchors instead of leaving the letters blank. That is
+    the wrong trade for fine-tuning — it reintroduces exactly the baggage the alphabet
+    avoids — but it is the *right* prompt for an untrained model, which has no way to
+    learn what a blank letter means. It exists so the zero-shot floor can be attributed
+    to the model rather than to labels it was never given the key to; training and
+    inference must simply agree on one value, which `assert_prompt_parity` still checks
+    because it takes the built string.
     """
     text = (transcript or "").strip() or EMPTY_TRANSCRIPT
     lo, hi = codec.labels[0], codec.labels[-1]
+    scale = f"\nScale: {band_rubric(codec)}\n" if rubric else ""
     return (
         "Rate the spoken English proficiency of this transcribed learner response.\n\n"
         f"Test part: {part}\n"
-        f"Transcript: {text}\n\n"
+        f"Transcript: {text}\n"
+        f"{scale}\n"
         f"Answer with a single letter from {lo} (lowest) to {hi} (highest)."
     )
 
