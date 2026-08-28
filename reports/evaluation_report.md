@@ -2,7 +2,7 @@
 
 **System:** whisper-small ASR → 17 fluency/prosody features → Random Forest
 **Data:** Speak & Improve Corpus 2025, scored long-turn dev set (876 responses, 438 speakers)
-**Companion:** `model_card.md` (summary), notebooks 01–04 (full analysis), `data_gates.md` (data verification)
+**Companion:** `model_card.md` (summary), notebooks 01–05 (full analysis), `data_gates.md` (data verification)
 
 ---
 
@@ -16,13 +16,18 @@ evaluation surfaced five findings that matter more than the headline:
    nearly a full band (+0.96 at band 2) and under-scores the strongest (−0.70 at band 5).
 2. **ASR error does not independently bias scores.** The apparent WER→error relationship
    (r = +0.15) vanishes when proficiency is controlled (r = −0.01) — a mediation effect
-   that a naive analysis would have misreported as ASR-induced unfairness.
+   that a naive analysis would have misreported as ASR-induced unfairness. This was
+   re-tested against its own stated caveat and **replicates** on a scorer that reads
+   nothing but the transcript (§6).
 3. **Small-sample evaluation inflates results**: the identical pipeline scored QWK 0.647 on
    a 100-response sample vs 0.604 on the full 438-response part.
 4. **Word count alone captures ~90% of the achievable QWK** (0.500 of 0.558) — the model is
    mostly measuring how much candidates say.
 5. **Whisper erases the disfluency signal entirely** (100% of filled pauses), removing a
    cue that gold annotations show is predictive (r = −0.25).
+6. **Reading content did not help.** A 1.5B instruct model LoRA-fine-tuned on the
+   transcripts reaches QWK 0.446 on identical rows — below the word-count baseline, and
+   with *worse* scale compression than the feature-based scorer (§4).
 
 ## 2. System under evaluation
 
@@ -64,12 +69,26 @@ available**; model–human agreement below cannot be benchmarked against inter-r
 | Ridge (17 features) | 0.609 | 0.610 | 0.464 | 0.582 | 0.548 |
 | **Random Forest** | **0.622** | **0.625** | **0.456** | **0.575** | **0.558** |
 | MLP (PyTorch) | 0.483 | 0.486 | 0.580 | 0.727 | 0.475 |
+| LoRA transcript scorer (argmax) | 0.505 | 0.529 | 0.511 | 0.670 | 0.446 |
+| LoRA transcript scorer (expected) | 0.550 | 0.559 | 0.523 | 0.647 | 0.415 |
 
 - The word-count baseline is the most important row: features beyond quantity-of-speech buy
   +0.058 QWK. Any claimed improvement to this system should be benchmarked against word
   count, not the mean predictor.
 - The MLP is an honest null: 876 rows is too few for a neural model at default settings.
   It remains in the table as the baseline for when features or data grow.
+- **The content-aware arm is a reported negative result.** A `Qwen2.5-1.5B-Instruct-4bit`
+  model LoRA-fine-tuned (rank 8, 8 layers) to emit a proficiency band from the transcript
+  alone finishes last of the four real arms and below the word-count floor, on exactly the
+  same held-out rows — notebook 05 reads the fold assignment out of the LoRA cache rather
+  than re-splitting, so the comparison is not a fold artefact. Its two ordinal decodes
+  disagree about which is better and are both reported: expectation decoding ranks better
+  (r 0.550 vs 0.505) and compresses harder (predicted sd 0.39 vs 0.49, against human 0.73),
+  and QWK — computed on the snapped 0.5 grid — charges for the compression that Pearson r
+  ignores. Prediction range tells the story: 1.72–2.00 against 2.38–2.93 for the linear and
+  forest arms. The claim is scoped to this scale: 1.5B at rank 8 on 876 responses is the
+  smallest credible version of the experiment, not a result about content features
+  in general.
 - Per part: QWK 0.604 (P3) vs 0.496 (P4) with the same features and speakers — the model
   *ranks* P4 responses less well, while error size and bias are comparable
   (MAE 0.43 vs 0.48, signed error ≈ 0 for both).
@@ -98,6 +117,15 @@ finding with operational teeth — the scorer is most wrong, and wrong in the ca
 favour, exactly where a pass/fail decision would sit. Per speaker (mean of two responses):
 median MAE 0.39, 90th percentile 0.83, maximum 1.71.
 
+Compression is not an artefact of the feature set. The content-aware arm compresses
+*harder* at both edges — +1.028 at band 2 and −1.012 at band 5 (expectation decoding),
+against the forest's +0.964 / −0.701 — with exact agreement 27.6% against 34.1%. Decoding
+the band distribution at a lower temperature recovers only ~+0.03 QWK before running out
+(predicted sd still 0.40 against the human 0.73), which locates the fix in calibration
+rather than in decoding: sharpening moves scale, not ranking. Any such calibration must be
+fitted on an inner split of the training folds; the temperature that maximises QWK on the
+evaluation set is not a figure that can stand beside 0.558.
+
 ## 6. ASR error impact
 
 whisper-small scores **16.8% corpus WER** against gold disfluent transcripts (lenient
@@ -105,7 +133,7 @@ normalisation; +4.1 points when disfluencies must also be transcribed). WER is h
 right-skewed (per-response mean 22.2%, median 12.1%) and rises as proficiency falls
 (r = −0.28).
 
-The propagation analysis proceeded in two steps across notebooks 02 and 04:
+The propagation analysis proceeded in three steps across notebooks 02, 04 and 05:
 
 1. **The alarm:** WER correlates with *signed* scoring error (r = +0.15, p = .0002) —
    apparently, badly-transcribed responses get over-scored.
@@ -113,12 +141,38 @@ The propagation analysis proceeded in two steps across notebooks 02 and 04:
    (p = .75)**. High-WER speakers are low-proficiency speakers, and low-proficiency
    speakers are over-scored by band compression. The ASR effect was proficiency in
    disguise.
+3. **The caveat, tested.** This null was originally qualified: it held for a system whose
+   features barely use transcript *content*, and content-sensitive features would re-open
+   the question. That test has now been run. A LoRA-fine-tuned scorer reading nothing but
+   the transcript (§4) shows the same pattern — raw r = **+0.161** (p = .0001), partial
+   r = **−0.036** (p = .379) — and the Random Forest reproduces its published figures to
+   three decimals on the same rows and the same code path (+0.151 → −0.014). **The null is
+   not an artefact of content-blind features.**
 
-Caveat: this null holds for a system whose features barely use transcript *content*.
-Content-sensitive features (lexical, grammatical, semantic relevance) would re-open the
-question, as would the separately-demonstrated disfluency erasure: Whisper transcribed
-**0 of 333** gold-annotated filled pauses, and the erased signal is predictive of score
-(gold disfluency rate, r = −0.25, p = .046).
+| Scorer | WER vs signed error | Partial (proficiency controlled) |
+|---|---|---|
+| Random Forest | +0.151 (p = .0002) | −0.014 (p = .733) |
+| LoRA (expected) | +0.161 (p = .0001) | −0.036 (p = .379) |
+| LoRA (argmax) | +0.117 (p = .0040) | −0.068 (p = .095) |
+
+The *signed* qualifier is load-bearing and easy to lose: signed error asks whether bad
+transcription pushes scores in a **direction**, absolute error asks whether it makes them
+less accurate either way. Only the first is the claim above, and the two do not agree
+(WER vs |error| is −0.031 for the forest, −0.083 for LoRA expected). A draft of this
+analysis measured |error| and would have reported a non-replication that was really a
+different question.
+
+What remains untested is the *interventional* form of the question — retraining on gold
+transcripts and comparing. That was attempted and is **confounded**: the gold subset is 589
+of 876 responses, so the gold arm trains on 425 rows per fold against 630 and, at a fixed
+iteration budget, sees ~3.8 epochs against ~2.5. Transcript quality, supervision volume and
+training budget all move together, so the observed drop (QWK 0.345 vs 0.368 on matched
+rows) supports only the weaker claim that gold transcripts do not help enough to overcome a
+smaller training set. The clean control is listed in §9.
+
+Unaffected by any of this: the separately-demonstrated disfluency erasure. Whisper
+transcribed **0 of 333** gold-annotated filled pauses, and the erased signal is predictive
+of score (gold disfluency rate, r = −0.25, p = .046).
 
 ## 7. Fairness
 
@@ -147,7 +201,14 @@ stated rather than silently skipped. The supported slices:
 1. Any future model change must beat the **word-count baseline**, reported alongside.
 2. Apply and evaluate a **calibration correction** for band compression before any
    stakes-adjacent use.
-3. Add **content features** (lexical/grammatical/semantic), then re-run the ASR-propagation
-   analysis — the current null is conditional on content-blind features.
+3. ~~Add **content features**, then re-run the ASR-propagation analysis.~~ **Done (§4, §6).**
+   A LoRA-fine-tuned transcript scorer reached QWK 0.446 against the forest's 0.558 —
+   below the word-count baseline — and the ASR-propagation null replicated under it. The
+   follow-ups this raises, in priority order: run the **clean transcript-quality control**
+   (Whisper transcripts restricted to the same 589 gold-covered rows, so the arms differ
+   only in transcript source, unlike the confounded ablation in §6); keep a
+   **best-checkpoint fallback** when fine-tuning, since three of five folds ended on
+   weights worse than ones the run passed through; and test whether the negative result
+   holds at larger scale before generalising it beyond 1.5B / rank 8.
 4. Re-run the audio-quality slice once P1/P5 transcription completes (more Q2/QX coverage).
 5. Report per-candidate reliability (per-speaker error distribution), not only aggregate QWK.

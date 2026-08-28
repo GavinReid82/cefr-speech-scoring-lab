@@ -10,8 +10,8 @@ Following the structure of Mitchell et al. (2019), *Model Cards for Model Report
 | ASR | `whisper-small` via faster-whisper (CTranslate2, int8), word timestamps, English forced |
 | Features (17) | 11 fluency (speech/articulation rate, pause statistics, length of run, lexical diversity as MTLD, filled pauses), 5 prosody (pitch spread in semitones, voiced ratio, intensity spread via Praat/parselmouth), test-part indicator |
 | Model | `RandomForestRegressor` — 500 trees, `min_samples_leaf=5`, seed 42 |
-| Version / date | v0.1, 5 June 2026 |
-| Code | `src/speechlab/`, notebooks 01–04 in this repository |
+| Version / date | v0.1, 5 June 2026 (metrics unchanged; alternatives section added 27 August 2026) |
+| Code | `src/speechlab/`, notebooks 01–05 in this repository |
 
 ## Intended use
 
@@ -43,6 +43,8 @@ none for RF). QWK computed on the 0.5-step grid. All figures are out-of-fold pre
 | Ridge (17 features) | 0.609 | 0.464 | 0.548 |
 | **Random Forest (this model)** | **0.622** | **0.456** | **0.558** |
 | MLP (PyTorch, default settings) | 0.483 | 0.580 | 0.475 |
+| LoRA transcript scorer (argmax) | 0.505 | 0.511 | 0.446 |
+| LoRA transcript scorer (expected) | 0.550 | 0.523 | 0.415 |
 
 Agreement with human scores: **34.1% exact** (same 0.5 step), **81.5% within half a band**,
 **97.7% within one band**. Per part: QWK 0.604 (P3) vs 0.496 (P4).
@@ -59,6 +61,7 @@ Agreement with human scores: **34.1% exact** (same 0.5 step), **81.5% within hal
    in the gold annotations (r = −0.25).
 4. **Word count dominates.** A word-count-only baseline reaches QWK 0.500 of the model's
    0.558 — most of the signal is quantity of speech, a known property of fluency features.
+   The obvious remedy was tested and did not work: see *Alternatives considered*.
 
 ## Fairness
 
@@ -72,7 +75,33 @@ the most important slice in the assessment literature is a stated limitation):
 - **Test part:** comparable error size (MAE 0.43 vs 0.48), weaker *ranking* on P4
   (QWK 0.50 vs 0.60).
 - **ASR-error propagation:** none independent of proficiency (raw r = +0.15 collapses to
-  r = −0.01 controlling for score).
+  r = −0.01 controlling for score). Re-tested on a scorer that reads only the transcript
+  and replicates (+0.161 → −0.036), so this is not an artefact of content-blind features.
+
+## Alternatives considered
+
+**A content-aware scorer was built, evaluated and rejected** — recorded here because a
+negative result about the obvious next step is part of what this card should carry.
+`Qwen2.5-1.5B-Instruct-4bit` was LoRA-fine-tuned (rank 8, 8 layers, 400 iterations, trained
+locally under MLX as the licence requires) to emit a proficiency band from the transcript
+alone, then decoded ordinally over the band distribution. Under the identical
+speaker-grouped protocol and on identical held-out rows it reaches **QWK 0.446** (argmax) /
+**0.415** (expectation) — last of the four real arms and below the word-count floor.
+
+Three properties of that result bear on this model rather than only on the alternative:
+
+- **It does not fix band compression; it worsens it.** +1.028 / −1.012 at the band edges
+  against this model's +0.96 / −0.70, and 27.6% exact agreement against 34.1%.
+- **Its two decodes disagree about which is better**, and both are reported. Expectation
+  ranks better (r 0.550 vs 0.505) and compresses harder (predicted sd 0.39 vs 0.49, against
+  a human sd of 0.73); QWK is computed on the snapped grid and charges for compression that
+  Pearson r ignores.
+- **Reliability was worse, not only accuracy.** One fold in five collapsed to two output
+  classes, which no aggregate metric in the table above would have revealed.
+
+Scope: this is a result at 1.5B and rank 8 on 876 responses, not a general finding about
+content features. Fine-tuned adapters are corpus derivatives and are not distributed.
+Full analysis in notebook 05 and §4/§6 of `evaluation_report.md`.
 
 ## Caveats and recommendations
 
@@ -83,4 +112,5 @@ the most important slice in the assessment literature is a stated limitation):
 - Small-sample warning, demonstrated: the same pipeline scored QWK 0.647 at n=100 vs 0.604
   at n=438 on P3. Treat sub-1000-response evaluation figures as upper bounds.
 - Before any operational consideration: calibration correction for band compression,
-  text/content features beyond fluency, L1-annotated data for the missing fairness slice.
+  L1-annotated data for the missing fairness slice, and a content-feature approach that
+  actually clears the word-count baseline — the one tested did not.
