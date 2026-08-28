@@ -17,3 +17,11 @@ praat-parselmouth>=0.4  # Praat bindings: pitch (F0) and intensity contours
 # Notebook 03: full dev set, non-linear models
 torch>=2.0              # small MLP regressor (speechlab.scoring_models)
 pytest>=8.0             # test suite (tests/, synthetic fixtures only)
+
+# Apple Silicon LoRA fine-tuning (Apple Silicon only; rest of lab runs anywhere)
+mlx>=0.32
+mlx-lm>=0.31
+
+# Direct imports (also arrive transitively via mlx-lm, declared explicitly here)
+transformers>=4.44      # tokenizer-only parity check (llm_scorer.py)
+pyyaml>=6.0             # per-fold training config writer (finetune_lora.py)

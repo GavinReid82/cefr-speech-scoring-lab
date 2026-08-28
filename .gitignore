@@ -3,6 +3,17 @@
 # data/ is excluded from commit zero — do not weaken this.
 data/
 
+# LICENCE RULE (derived models): the licence forbids releasing models or statistics
+# derived from the corpus without the licensor's approval. A LoRA adapter trained on
+# learner transcripts IS such a derivative — weights stay local. Adapters belong in
+# data/derived/adapters/ (already covered above); these are belt-and-braces for any
+# tool that defaults to writing weights at the repo root.
+adapters/
+adapter_config.json
+*.safetensors
+*.npz
+*.gguf
+
 # Python
 __pycache__/
 *.py[cod]
