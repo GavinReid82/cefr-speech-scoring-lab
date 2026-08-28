@@ -20,7 +20,25 @@ The scorer is a means; the evaluation report is the product.
 2. **LICENCE** — The corpus is research-licensed. The public repo contains code, notebooks, reports and aggregate figures only. `data/` is gitignored from commit zero; committed notebook outputs show aggregates only.
 3. **HAND-BUILT FIRST** — Feature extraction and models are built by hand in readable `src/` code. The corpus's published baseline systems are a comparison reference to read and cite, not a pipeline to run as a black box.
 4. **DELIVERABLE** — The evaluation report: model–human agreement, intra-scorer consistency, fairness slices, ASR-error→score-error analysis. Scorer accuracy is not the goal.
-5. **SCALE** — Laptop-scale throughout: Whisper small/medium for ASR, librosa/parselmouth for acoustics, scikit-learn plus a small PyTorch MLP. wav2vec2 embeddings + regression head is the only stretch goal; no fine-tuning of large models.
+5. **SCALE** — Laptop-scale throughout: Whisper small/medium for ASR, librosa/parselmouth for acoustics, scikit-learn plus a small PyTorch MLP. wav2vec2 embeddings + regression head is the only stretch goal; no fine-tuning of large models. — amended 2026-08-27, see Amendments
+
+## Amendments
+
+### 2026-08-27 — Premise 5: LoRA fine-tuning admitted
+
+**What changed** — a fifth scoring arm is added: a LoRA-fine-tuned transcript scorer, `mlx-community/Qwen2.5-1.5B-Instruct-4bit`, fine-tuned locally with `mlx-lm` on Apple Silicon.
+
+**Why it is still laptop-scale** — LoRA rank 8 over the top 8 layers trains roughly 0.15% of parameters; the base weights are 4-bit. A smoke run on the 0.5B model measured **2.07 GB peak memory**. There is no cloud GPU and no full-parameter training, so the spirit of premise 5 — laptop-scale throughout — is unbroken. What is retired is only the clause "no fine-tuning of large models".
+
+**Why it is necessary** — Recommendation 3 of `reports/evaluation_report.md`. Every existing arm is content-blind (fluency, prosody, word counts), so the report's ASR-propagation null result is *conditional* on that blindness. Testing it needs a scorer that reads what the candidate actually said.
+
+**Why local, not an API** — the corpus licence says "do not share with LLMs with training retention". A local model is therefore the **compliant** architecture, not merely the affordable one. The licence also forbids releasing corpus-derived models without approval, so adapter weights stay local and gitignored.
+
+**Premise 3 is unaffected** — mlx-lm's trainer is used as a tool (as Whisper and scikit-learn already are), while the ordinal band decode, the prompt contract and the evaluation stay hand-built in `src/speechlab/` (`ordinal.py`, `llm_scorer.py`).
+
+**Protocol is unchanged** — the same speaker-grouped `GroupKFold(5)` over the same 876 P3+P4 dev responses, scored by the same `speechlab.evaluation`. Comparability with the published Random Forest baseline is the point.
+
+**Outcome (added when the arm had run)** — the amendment was worth making and the arm lost. QWK 0.446 (argmax) / 0.415 (expected) against the Random Forest's 0.558 on identical rows, below the word-count floor of 0.500; the ASR-propagation null replicated under it, which is what the amendment existed to test. Premise 5 stays retired rather than reinstated — the question it blocked turned out to be answerable at laptop scale, and the answer is a reported negative result. See notebook 05 and `docs/session-2026-08-27.md`.
 
 ## Approaches considered
 
@@ -67,3 +85,4 @@ Three assumptions were gated on metadata inspection before any modelling commitm
 6. Notebook 03: text features (MTLD, embedding relevance, LLM-derived grammar/coherence with JSON-schema validation), Random Forest, PyTorch MLP
 7. Notebook 04 + reports: full evaluation, fairness slices, error analysis, model card
 8. Stretch: wav2vec2 embeddings + regression head; SHAP feature attribution
+9. Notebook 05: LoRA transcript scorer arm (`mlx-community/Qwen2.5-1.5B-Instruct-4bit` via `mlx-lm`); ASR-propagation re-run
