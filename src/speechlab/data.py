@@ -15,7 +15,7 @@ def load_responses(corpus: Path, part: str, split: str = "dev") -> pd.DataFrame:
                          sep="\t", names=["speaker", "score"])
     flist = pd.read_csv(ref / "flists.flac" / f"{split}-sla-{part}.tsv",
                         sep="\t", names=["utt", "flac"])
-    # utteranceID 'SI114J-00011-P30017' -> speakerID 'SI114J-00011'
+    # utteranceID 'SIXXXX-00000-P30000' -> speakerID 'SIXXXX-00000'
     flist["speaker"] = flist["utt"].str.rsplit("-", n=1).str[0]
     return flist.merge(scores, on="speaker", how="inner")
 
