@@ -30,8 +30,15 @@ the ASR-propagation null **replicates** under a scorer that reads nothing but th
 transcript (raw r = +0.16, partial r = −0.04). A negative result, reported as
 one — and measured against its own floor: the same model untrained scores QWK
 0.144, so the fine-tuning is worth +0.302 and the shortfall is a ceiling rather
-than a failed training run. Notebooks: `01`–`05`. **Deliverables: `reports/model_card.md` and
-`reports/evaluation_report.md`.**
+than a failed training run.
+
+The propagation null has since been pushed one level further: broken down by ASR error
+*type* rather than by WER, deletion rate keeps a small residual (partial r = −0.12,
+replicated on the LoRA arm) whose sign is **under**-scoring — the opposite direction to
+the raw alarm — while insertions and overall WER show nothing. It is about 1% of the error
+variance against a band-compression term of nearly a full band, so it refines the phrasing
+rather than the conclusion. Notebooks: `01`–`05`. **Deliverables: `reports/model_card.md`,
+`reports/evaluation_report.md` and `reports/error_analysis.md`.**
 Design: `docs/design.md`. Session log: `JOURNAL.md`.
 
 ## Data and licence
@@ -45,9 +52,11 @@ all committed reports contain aggregate figures only. See `data/README.md`
 ## Structure
 
 ```
-notebooks/   01–04 (frozen session records)
+notebooks/   01–05 (frozen session records)
 src/         speechlab: data, asr, acoustic_features, text_features, scoring_models, ordinal, llm_scorer, evaluation
-scripts/     download_dev_audio, transcribe_dev, extract_prosody, finetune_lora (resumable)
+scripts/     download_dev_audio, transcribe_dev, extract_prosody, finetune_lora (resumable),
+             error_analysis (regenerates the error-analysis aggregates),
+             licence_scan (pre-push: ids and verbatim transcript runs, vs the corpus)
 tests/       pytest on synthetic fixtures (no corpus data)
-reports/     data_gates, model_card, evaluation_report
+reports/     data_gates, model_card, evaluation_report, error_analysis
 ```

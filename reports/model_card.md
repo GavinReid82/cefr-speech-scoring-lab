@@ -10,7 +10,7 @@ Following the structure of Mitchell et al. (2019), *Model Cards for Model Report
 | ASR | `whisper-small` via faster-whisper (CTranslate2, int8), word timestamps, English forced |
 | Features (17) | 11 fluency (speech/articulation rate, pause statistics, length of run, lexical diversity as MTLD, filled pauses), 5 prosody (pitch spread in semitones, voiced ratio, intensity spread via Praat/parselmouth), test-part indicator |
 | Model | `RandomForestRegressor` — 500 trees, `min_samples_leaf=5`, seed 42 |
-| Version / date | v0.1, 5 June 2026 (metrics unchanged; alternatives section added 27 August 2026, its untrained floor 28 August 2026) |
+| Version / date | v0.1, 5 June 2026 (metrics unchanged; alternatives section added 27 August 2026, its untrained floor 28 August 2026, consistency and error-type analysis 31 August 2026) |
 | Code | `src/speechlab/`, notebooks 01–05 in this repository |
 
 ## Intended use
@@ -50,6 +50,13 @@ none for RF). QWK computed on the 0.5-step grid. All figures are out-of-fold pre
 Agreement with human scores: **34.1% exact** (same 0.5 step), **81.5% within half a band**,
 **97.7% within one band**. Per part: QWK 0.604 (P3) vs 0.496 (P4).
 
+**Consistency.** This model is deterministic given its features, so a repeat scoring pass
+cannot disagree with itself and no repeat-pass figure is reported for it — the same turns
+out to hold for the LLM arm, which reads fixed logits rather than sampling. The one
+consistency figure the system supports is agreement across a reworded prompt on the
+untrained transcript scorer: pass-to-pass QWK **0.512** (expectation decode) against 0.144
+with humans. See §5 of `evaluation_report.md`.
+
 ## Known failure modes
 
 1. **Band compression.** Mean signed error +0.96 at band 2 (every band-2 response
@@ -57,9 +64,10 @@ Agreement with human scores: **34.1% exact** (same 0.5 step), **81.5% within hal
    the strongest; it rarely predicts below 3 or above 5.
 2. **Per-speaker tail.** Median per-speaker MAE 0.39, but the 90th percentile is 0.83 and
    the worst-served speaker averages 1.71 bands of error.
-3. **Disfluency blindness.** Whisper erases 100% of filled pauses (333 spoken → 0
-   transcribed in the gold-covered sample), removing a proficiency cue that is predictive
-   in the gold annotations (r = −0.25).
+3. **Disfluency blindness.** Whisper erases 100% of filled pauses (3,058 spoken → 0
+   transcribed across the 600 gold-covered responses), removing a proficiency cue that is
+   predictive in the gold annotations (r = −0.25). This is the largest ASR-attributable
+   harm in the system and no WER figure charges for it.
 4. **Word count dominates.** A word-count-only baseline reaches QWK 0.500 of the model's
    0.558 — most of the signal is quantity of speech, a known property of fluency features.
    The obvious remedy was tested and did not work: see *Alternatives considered*.
@@ -78,6 +86,10 @@ the most important slice in the assessment literature is a stated limitation):
 - **ASR-error propagation:** none independent of proficiency (raw r = +0.15 collapses to
   r = −0.01 controlling for score). Re-tested on a scorer that reads only the transcript
   and replicates (+0.161 → −0.036), so this is not an artefact of content-blind features.
+  Broken down by error type, deletion rate keeps a small residual (partial r = −0.119,
+  p = .004, replicated on the LoRA arm) and its sign is *under*-scoring, not the
+  over-scoring the raw correlation suggested — about 1% of the error variance. Full
+  anatomy in `error_analysis.md`.
 
 ## Alternatives considered
 
@@ -109,7 +121,8 @@ Three properties of that result bear on this model rather than only on the alter
 
 Scope: this is a result at 1.5B and rank 8 on 876 responses, not a general finding about
 content features. Fine-tuned adapters are corpus derivatives and are not distributed.
-Full analysis in notebook 05 and §4/§6 of `evaluation_report.md`.
+Full analysis in notebook 05 and §4/§6 of `evaluation_report.md`; failure anatomy in
+`error_analysis.md`.
 
 ## Caveats and recommendations
 

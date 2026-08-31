@@ -2,7 +2,8 @@
 
 **System:** whisper-small ASR → 17 fluency/prosody features → Random Forest
 **Data:** Speak & Improve Corpus 2025, scored long-turn dev set (876 responses, 438 speakers)
-**Companion:** `model_card.md` (summary), notebooks 01–05 (full analysis), `data_gates.md` (data verification)
+**Companion:** `model_card.md` (summary), `error_analysis.md` (failure anatomy),
+notebooks 01–05 (full analysis), `data_gates.md` (data verification)
 
 ---
 
@@ -10,7 +11,7 @@
 
 A feature-based scorer reaches **QWK 0.558** against human consensus scores under
 speaker-grouped cross-validation, with **81.5% of predictions within half a band**. The
-evaluation surfaced five findings that matter more than the headline:
+evaluation surfaced six findings that matter more than the headline:
 
 1. The scorer **compresses the scoring scale**: it over-scores the weakest candidates by
    nearly a full band (+0.96 at band 2) and under-scores the strongest (−0.70 at band 5).
@@ -18,7 +19,10 @@ evaluation surfaced five findings that matter more than the headline:
    (r = +0.15) vanishes when proficiency is controlled (r = −0.01) — a mediation effect
    that a naive analysis would have misreported as ASR-induced unfairness. This was
    re-tested against its own stated caveat and **replicates** on a scorer that reads
-   nothing but the transcript (§6).
+   nothing but the transcript (§6). Broken down by *error type* rather than by WER, one
+   small residual does survive, in the opposite direction to the alarm: deleted words
+   lead to **under**-scoring (partial r = −0.12), about 1% of the error variance
+   (`error_analysis.md` §4).
 3. **Small-sample evaluation inflates results**: the identical pipeline scored QWK 0.647 on
    a 100-response sample vs 0.604 on the full 438-response part.
 4. **Word count alone captures ~90% of the achievable QWK** (0.500 of 0.558) — the model is
@@ -145,6 +149,34 @@ rather than in decoding: sharpening moves scale, not ranking. Any such calibrati
 fitted on an inner split of the training folds; the temperature that maximises QWK on the
 evaluation set is not a figure that can stand beside 0.558.
 
+### Intra-scorer consistency
+
+The design specifies consistency as QWK between two independent LLM scoring passes, with
+deterministic models exempt. **Every arm in this report turns out to be exempt**, including
+the LLM one: `LoRABandScorer` takes a single forward pass and reads eight logits at fixed
+token ids, with no sampling anywhere, so a repeat pass is bit-identical and pass-to-pass
+QWK is 1.0 by construction. That number measures the decode's determinism, not the
+scorer's reliability, and is not reported as a consistency figure.
+
+The measurable version is agreement across a benign **rewording** of the prompt — the two
+zero-shot passes of §4, blank band letters versus the same letters anchored to CEFR names:
+
+| | expected | argmax |
+|---|---|---|
+| pass-to-pass QWK | 0.512 | 0.244 |
+| pass-to-pass r | 0.717 | 0.420 |
+| exact agreement | 39.6% | 18.5% |
+| *the same passes vs human, best of the two* | *0.144* | *0.072* |
+
+Two readings, and both matter. Renaming the bands moves 60% of the expectation decode's
+band assignments, which is substantial instability for a change that adds information and
+removes none. But self-agreement is a **ceiling** on agreement with humans, and the
+untrained arm sits at 0.144 under a ceiling of 0.512 — a quarter of the way up. Its floor
+is therefore a validity problem, not a reliability one, which rules out the reading that
+§4's zero-shot number is low merely because the prompt was arbitrary. No equivalent figure
+exists for the fine-tuned arm: measuring it needs a second fine-tune under a reworded
+prompt, which is a training run, not a decode.
+
 ## 6. ASR error impact
 
 whisper-small scores **16.8% corpus WER** against gold disfluent transcripts (lenient
@@ -174,6 +206,19 @@ The propagation analysis proceeded in three steps across notebooks 02, 04 and 05
 | LoRA (expected) | +0.161 (p = .0001) | −0.036 (p = .379) |
 | LoRA (argmax) | +0.117 (p = .0040) | −0.068 (p = .095) |
 
+**One refinement, from `error_analysis.md` §4.** Steps 1 and 2 test *overall* WER. Broken
+into its components — substitution, deletion and insertion rates, all over the same
+denominator — deletion rate retains a partial correlation with signed error of **−0.119**
+(p = .004) where WER retains −0.014 (p = .73), and it **replicates on the LoRA arm**
+(−0.114, p = .005). The sign is the interesting part: it is *negative*, so once
+proficiency is held constant, a transcript with words missing is **under**-scored — the
+opposite direction to the raw alarm in step 1, and mechanically what `n_words` being the
+dominant feature predicts. The effect is about 1% of the variance in signed error against
+a band-compression term of nearly a full band, so the operational conclusion is unchanged;
+what changes is the strength of the phrasing. The null holds for aggregate WER and not
+quite for deletion. Insertion rate, including the responses where Whisper loops and emits
+several times the spoken length, shows nothing at all (+0.017, p = .68).
+
 The *signed* qualifier is load-bearing and easy to lose: signed error asks whether bad
 transcription pushes scores in a **direction**, absolute error asks whether it makes them
 less accurate either way. Only the first is the claim above, and the two do not agree
@@ -190,8 +235,16 @@ rows) supports only the weaker claim that gold transcripts do not help enough to
 smaller training set. The clean control is listed in §9.
 
 Unaffected by any of this: the separately-demonstrated disfluency erasure. Whisper
-transcribed **0 of 333** gold-annotated filled pauses, and the erased signal is predictive
-of score (gold disfluency rate, r = −0.25, p = .046).
+transcribed **0 of 333** gold-annotated filled pauses on the notebook-01 sample, and **0
+of 3,058** across all 600 gold-covered responses; the erased signal is predictive of score
+(gold disfluency rate, r = −0.25, p = .046). This is the largest ASR-attributable harm in
+the system and it appears in no WER figure — the lenient reference strips hesitations by
+design, and the strict one charges only +4.1 points for them.
+
+`error_analysis.md` carries the full anatomy: the composition of the ASR errors
+(substitutions 36.7%, insertions 33.9%, deletions 29.4%), five case classes with their
+counts and the scorer's behaviour on each, and why the class table must be read against
+each class's mean proficiency rather than against zero.
 
 ## 7. Fairness
 
