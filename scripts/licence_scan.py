@@ -60,7 +60,8 @@ ADJUDICATED = {
 # Text formats that can carry corpus content. Binary and data files are excluded because
 # `data/` is gitignored from commit zero — if one appears in git at all, that is a
 # different and larger problem than this script is checking for.
-SUFFIXES = {".ipynb", ".md", ".py", ".txt", ".toml", ".cfg", ".yml", ".yaml", ".json"}
+SUFFIXES = {".ipynb", ".md", ".py", ".txt", ".toml", ".cfg", ".yml", ".yaml", ".json",
+            ".html"}
 
 
 def corpus_index() -> tuple[set[str], set[str], set[str]]:

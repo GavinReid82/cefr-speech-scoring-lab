@@ -1,0 +1,762 @@
+<title>Scoring the Scorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --paper:      #F5F6F3;
+    --surface:    #FFFFFF;
+    --sunk:       #ECEEE9;
+    --ink:        #15212A;
+    --ink-soft:   #4E5C60;
+    --ink-faint:  #7C8A8B;
+    --rule:       #DBDFD9;
+    --rule-firm:  #C2C9C1;
+    --cool:       #2A6788;
+    --cool-soft:  #E2EDF3;
+    --warm:       #B3652F;
+    --warm-soft:  #F6E9DD;
+    --shadow:     0 1px 2px rgba(21,33,42,.05), 0 8px 24px -18px rgba(21,33,42,.35);
+
+    --display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --body:    "Newsreader", Georgia, "Times New Roman", serif;
+    --mono:    "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:     #11181D;
+      --surface:   #172128;
+      --sunk:      #1D2830;
+      --ink:       #E4E9E4;
+      --ink-soft:  #A6B3B3;
+      --ink-faint: #7C8A8B;
+      --rule:      #29353C;
+      --rule-firm: #3A4750;
+      --cool:      #78B4D4;
+      --cool-soft: #1B2E39;
+      --warm:      #DC9257;
+      --warm-soft: #33241A;
+      --shadow:    0 1px 2px rgba(0,0,0,.4), 0 8px 24px -18px rgba(0,0,0,.8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:     #11181D;
+    --surface:   #172128;
+    --sunk:      #1D2830;
+    --ink:       #E4E9E4;
+    --ink-soft:  #A6B3B3;
+    --ink-faint: #7C8A8B;
+    --rule:      #29353C;
+    --rule-firm: #3A4750;
+    --cool:      #78B4D4;
+    --cool-soft: #1B2E39;
+    --warm:      #DC9257;
+    --warm-soft: #33241A;
+    --shadow:    0 1px 2px rgba(0,0,0,.4), 0 8px 24px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 19px;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 24px 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 46rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* ---------- masthead ---------- */
+
+  .mast {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 72px 0 40px;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--cool);
+    margin: 0;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(2.6rem, 8vw, 4.1rem);
+    line-height: .98;
+    letter-spacing: -.025em;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  .standfirst {
+    font-size: 1.22rem;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    max-width: 34rem;
+    margin: 0;
+  }
+
+  .mast-meta {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-faint);
+    letter-spacing: .02em;
+    margin: 6px 0 0;
+  }
+
+  /* ---------- the short version ---------- */
+
+  .nutshell {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    box-shadow: var(--shadow);
+    padding: 30px 32px;
+    margin: 40px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .nutshell p { margin: 0; }
+  .nutshell p + p { color: var(--ink-soft); font-size: 1rem; }
+
+  /* ---------- sections ---------- */
+
+  section {
+    padding: 52px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .chapno {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .16em;
+    color: var(--ink-faint);
+    display: block;
+    margin-bottom: 10px;
+  }
+
+  h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(1.5rem, 4vw, 1.95rem);
+    line-height: 1.14;
+    letter-spacing: -.017em;
+    text-wrap: balance;
+    margin: 0;
+    padding-top: 22px;
+    border-top: 1px solid var(--rule-firm);
+  }
+
+  h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 1.08rem;
+    letter-spacing: -.005em;
+    margin: 10px 0 -8px;
+  }
+
+  p { margin: 0; max-width: 40rem; }
+
+  strong { font-weight: 600; }
+
+  em.term {
+    font-style: normal;
+    font-family: var(--mono);
+    font-size: .82em;
+    background: var(--sunk);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+
+  .num {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: .87em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- decision note ---------- */
+
+  .why {
+    border-left: 3px solid var(--cool);
+    background: var(--cool-soft);
+    padding: 18px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-radius: 0 3px 3px 0;
+  }
+
+  .why-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--cool);
+  }
+
+  .why p { font-size: .98rem; line-height: 1.6; }
+
+  /* ---------- headline number ---------- */
+
+  .hit {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    padding: 16px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    flex-wrap: wrap;
+  }
+
+  .hit-fig {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 2.5rem;
+    line-height: 1;
+    letter-spacing: -.03em;
+    font-variant-numeric: tabular-nums;
+    color: var(--warm);
+  }
+
+  .hit-fig.cool { color: var(--cool); }
+
+  .hit-txt {
+    font-size: .99rem;
+    color: var(--ink-soft);
+    flex: 1 1 16rem;
+    min-width: 0;
+  }
+
+  /* ---------- glossary ---------- */
+
+  .gloss {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .gloss div {
+    background: var(--surface);
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .gloss dt {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    color: var(--cool);
+    margin: 0;
+  }
+
+  .gloss dd {
+    margin: 0;
+    font-size: .93rem;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+
+  .gloss dd.full {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: .97rem;
+    line-height: 1.3;
+    color: var(--ink);
+    letter-spacing: -.005em;
+  }
+
+  .gloss dd.say {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .05em;
+    color: var(--ink-faint);
+    margin-top: 2px;
+  }
+
+  /* ---------- tables ---------- */
+
+  .scroll {
+    overflow-x: auto;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  th, td {
+    padding: 10px 16px;
+    text-align: right;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+
+  th:first-child, td:first-child {
+    text-align: left;
+    font-family: var(--body);
+    font-size: 15.5px;
+    white-space: normal;
+    min-width: 12rem;
+  }
+
+  thead th {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    border-bottom: 1px solid var(--rule-firm);
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  tr.best td {
+    background: var(--cool-soft);
+    font-weight: 600;
+  }
+
+  tr.floor td { color: var(--ink-soft); }
+
+  td.up { color: var(--warm); font-weight: 600; }
+  td.down { color: var(--cool); font-weight: 600; }
+
+  .caption {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: var(--ink-faint);
+    letter-spacing: .01em;
+    max-width: 38rem;
+    margin: 0;
+  }
+
+  /* ---------- figure ---------- */
+
+  figure {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .chartbox {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 22px 18px 16px;
+    overflow-x: auto;
+  }
+
+  .chartbox svg { display: block; width: 100%; min-width: 460px; height: auto; }
+
+  .svg-tick { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+  .svg-note { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; }
+
+  /* ---------- lists ---------- */
+
+  ul.plain {
+    margin: 0;
+    padding: 0 0 0 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 40rem;
+  }
+
+  ul.plain li { padding-left: 4px; }
+  ul.plain li::marker { color: var(--ink-faint); }
+
+  /* ---------- verdict ---------- */
+
+  .verdict {
+    margin-top: 60px;
+    padding: 34px 32px;
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 3px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .verdict h2 {
+    border: none;
+    padding: 0;
+    color: var(--paper);
+    font-size: 1.6rem;
+  }
+
+  .verdict p { color: var(--paper); opacity: .88; max-width: 38rem; }
+  .verdict .eyebrow { color: var(--warm); }
+
+  footer {
+    margin-top: 44px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: var(--ink-faint);
+  }
+
+  @media (max-width: 640px) {
+    body { font-size: 18px; padding: 0 18px 72px; }
+    .nutshell, .why, .verdict { padding-left: 20px; padding-right: 20px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">Speak &amp; Improve Corpus 2025 · Plain-English write-up</p>
+    <h1>Scoring the Scorer</h1>
+    <p class="standfirst">A computer listened to people speaking English and gave them a grade. This is the story of checking how badly it got things wrong — and why that check was the point.</p>
+    <p class="mast-meta">876 spoken responses · 438 speakers · June–August 2026</p>
+  </header>
+
+  <div class="nutshell">
+    <p>We built a machine that grades spoken English. It is <strong>okay</strong>, not great. Then we spent most of the project proving exactly <em>how</em> it is wrong, and writing that down honestly.</p>
+    <p>The grading machine was never the product. The honest report about the grading machine was the product.</p>
+  </div>
+
+  <section>
+    <span class="chapno">The six terms you'll need to say out loud</span>
+    <dl class="gloss">
+      <div>
+        <dt>CEFR</dt>
+        <dd class="full">Common European Framework of Reference for Languages</dd>
+        <dd class="say">SAY: "SEF-ER"</dd>
+        <dd>The standard English levels — A1 (beginner) up to C1 (advanced). Here they're numbers 1 to 5, in half-steps.</dd>
+      </div>
+      <div>
+        <dt>ASR</dt>
+        <dd class="full">Automatic Speech Recognition</dd>
+        <dd class="say">SAY: "AY-ESS-AR"</dd>
+        <dd>Speech-to-text. The software that turns the audio into words on a page. Ours is Whisper, from OpenAI.</dd>
+      </div>
+      <div>
+        <dt>QWK</dt>
+        <dd class="full">Quadratic Weighted Kappa</dd>
+        <dd class="say">SAY: "Q-W-K" OR "QUADRATIC KAPPA"</dd>
+        <dd>One score for "how much does the machine agree with the human marker?" 0 = coin flip. 1 = perfect. "Weighted" because being wrong by two grades counts as far worse than being wrong by one.</dd>
+      </div>
+      <div>
+        <dt>WER</dt>
+        <dd class="full">Word Error Rate</dd>
+        <dd class="say">SAY: "W-E-R" OR "WORD ERROR RATE"</dd>
+        <dd>How much the speech-to-text got wrong. 20% means roughly one word in five is missing, wrong, or invented.</dd>
+      </div>
+      <div>
+        <dt>r</dt>
+        <dd class="full">Pearson correlation coefficient</dd>
+        <dd class="say">SAY: "CORRELATION OF..."</dd>
+        <dd>Do two things move together? 0 = unrelated. 1 = locked together. Minus means one goes up as the other goes down.</dd>
+      </div>
+      <div>
+        <dt>LoRA</dt>
+        <dd class="full">Low-Rank Adaptation</dd>
+        <dd class="say">SAY: "LOR-AH"</dd>
+        <dd>A cheap way to retrain a big language model. You freeze almost all of it and nudge a tiny fraction — about 0.15% here — so it fits on a laptop.</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section>
+    <h2><span class="chapno">01 — The job</span>Grade the speaking, then grade the grader</h2>
+    <p>Cambridge released a research collection of real learners speaking English. Each recording already has a grade from a <strong>trained human marker</strong>. That's rare and valuable — most projects have to fake their labels.</p>
+    <p>So the plan: build a machine that guesses those grades, then measure the machine properly. Does it agree with humans? Is it wrong in a fair way? Is it wrong because the speech-to-text messed up?</p>
+    <div class="why">
+      <span class="why-label">Why we did it that way</span>
+      <p>Almost every paper in this field competes on accuracy. Very few publish the boring, careful part — reliability, fairness, error analysis. That gap is what this project exists to fill. So accuracy was allowed to be mediocre, as long as the honesty was not.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="chapno">02 — Before building</span>We checked three things first, and one answer changed the plan</h2>
+    <p>Before writing any model code, we opened the corpus paperwork and asked three questions. It took a day and saved weeks.</p>
+    <ul class="plain">
+      <li><strong>What scale are the grades on?</strong> 0–6, in half-steps, roughly CEFR. Finer than we assumed. Good.</li>
+      <li><strong>How many humans marked each one?</strong> Only one final grade per response. That killed a planned measurement — you can't check "do two humans agree?" if there's only one human.</li>
+      <li><strong>Are there perfect human transcripts to compare against?</strong> Yes, and better than hoped — they even mark every "um" and "uh".</li>
+    </ul>
+    <p>A fourth thing turned up by accident: <strong>the corpus records nobody's first language.</strong> That's the single most important fairness question in language testing — does the machine punish Spanish speakers more than Japanese speakers? We cannot answer it. Not "we didn't get round to it". We <em>cannot</em>.</p>
+    <div class="why">
+      <span class="why-label">Why we did it that way</span>
+      <p>We swapped the fairness plan to what the data actually supports: recording quality, ability level, and which task the person was doing. And we wrote the missing first-language slice into the report as a stated hole, rather than quietly not mentioning it.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="chapno">03 — The machine</span>What it actually does</h2>
+    <p>Three steps, no magic:</p>
+    <ul class="plain">
+      <li><strong>Listen.</strong> Whisper (a speech-to-text model) turns ~60 seconds of audio into words, with a timestamp on every word.</li>
+      <li><strong>Measure.</strong> 17 numbers come out. How fast they talked. How long they paused. How many different words they used. Pitch wobble. That sort of thing.</li>
+      <li><strong>Guess.</strong> A Random Forest — basically a big committee of simple yes/no flowcharts — turns those 17 numbers into a grade.</li>
+    </ul>
+    <div class="why">
+      <span class="why-label">Why we did it that way</span>
+      <p>Everything runs on a laptop. No cloud GPUs. And the features are hand-built in readable code rather than pulled from a black box, because you can't write an honest error analysis about a system you can't see inside.</p>
+    </div>
+    <h3>Two small decisions with receipts</h3>
+    <p>We measure vocabulary richness with <strong>MTLD</strong> — <em>Measure of Textual Lexical Diversity</em> — instead of the textbook method, because the textbook method scored <strong>backwards</strong>. It said people with better vocabulary were worse. It was really just measuring length. Swapping it gained <span class="num">+0.026</span> agreement.</p>
+    <p>We threw away loudness. Loudness depends on the microphone, not the speaker. We kept only how much the loudness <em>varied</em>.</p>
+  </section>
+
+  <section>
+    <h2><span class="chapno">04 — The first result</span>It looked good, so we made it look worse</h2>
+    <p>First run on 100 responses: agreement with human markers of <span class="num">0.647</span> — that's Quadratic Weighted Kappa, QWK, and from here on "agreement" always means that number. Nice result.</p>
+    <p>Then we ran it properly on all 876. It fell to <span class="num">0.558</span>.</p>
+    <div class="hit">
+      <span class="hit-fig">0.647 → 0.558</span>
+      <span class="hit-txt">Same code. Same features. More data. The first number was small-sample luck, and the README now carries the lower one.</span>
+    </div>
+    <p>Two things caused the drop. More data is just harder. But also — we fixed a cheat.</p>
+    <p>Each person recorded <strong>two</strong> responses. If one lands in the practice pile and the other in the test pile, the machine has effectively already met that person. We forced both of a person's responses into the same pile.</p>
+    <div class="why">
+      <span class="why-label">Why we did it that way</span>
+      <p>We didn't just assume the cheat mattered — we measured it. It was worth about <span class="num">+0.015</span> on one model and roughly nothing on the Random Forest. That near-zero is itself informative: it means these features barely encode <em>who</em> the speaker is, only how good they are.</p>
+      <p>The technical name for this is <strong>speaker-grouped cross-validation</strong>. Cross-validation just means "split the data into piles, train on most of them, test on the one you held back, repeat". Speaker-grouped means a person is never split across piles.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="chapno">05 — The main flaw</span>It squashes everybody toward the middle</h2>
+    <p>This is the finding that matters most, and it has nothing to do with speech-to-text.</p>
+    <p>The machine is <strong>too kind to weak speakers and too harsh on strong ones.</strong> It rarely says anyone is very bad or very good. Everyone gets pushed toward average.</p>
+
+    <figure>
+      <div class="chartbox">
+        <svg viewBox="0 0 640 268" role="img" aria-label="Chart showing that human grades from 2 to 5 are compressed by the scorer into a narrow range from roughly 3.0 to 4.3.">
+          <rect x="244" y="46" width="201" height="176" fill="var(--sunk)" />
+          <text class="svg-note" x="344" y="240" text-anchor="middle" fill="var(--ink-faint)">EVERYTHING THE SCORER SAYS FITS IN HERE</text>
+
+          <line x1="100" y1="40" x2="100" y2="222" stroke="var(--rule)" stroke-width="1" />
+          <line x1="250" y1="40" x2="250" y2="222" stroke="var(--rule)" stroke-width="1" />
+          <line x1="400" y1="40" x2="400" y2="222" stroke="var(--rule)" stroke-width="1" />
+          <line x1="550" y1="40" x2="550" y2="222" stroke="var(--rule)" stroke-width="1" />
+
+          <text class="svg-tick" x="100" y="28" text-anchor="middle" fill="var(--ink-faint)">2</text>
+          <text class="svg-tick" x="250" y="28" text-anchor="middle" fill="var(--ink-faint)">3</text>
+          <text class="svg-tick" x="400" y="28" text-anchor="middle" fill="var(--ink-faint)">4</text>
+          <text class="svg-tick" x="550" y="28" text-anchor="middle" fill="var(--ink-faint)">5</text>
+          <text class="svg-note" x="20" y="28" fill="var(--ink-faint)">HUMAN GRADE</text>
+
+          <g stroke="var(--warm)" stroke-width="2.5">
+            <line x1="100" y1="70" x2="234" y2="70" />
+            <line x1="250" y1="118" x2="294" y2="118" />
+          </g>
+          <g fill="var(--warm)">
+            <polygon points="244,70 232,64 232,76" />
+            <polygon points="304,118 292,112 292,124" />
+            <circle cx="100" cy="70" r="5.5" />
+            <circle cx="250" cy="118" r="5.5" />
+            <text class="svg-tick" x="256" y="62" fill="var(--warm)">+0.96 too generous</text>
+            <text class="svg-tick" x="316" y="110" fill="var(--warm)">+0.36</text>
+          </g>
+
+          <g stroke="var(--cool)" stroke-width="2.5">
+            <line x1="400" y1="166" x2="392" y2="166" />
+            <line x1="550" y1="212" x2="457" y2="212" />
+          </g>
+          <g fill="var(--cool)">
+            <polygon points="382,166 394,160 394,172" />
+            <polygon points="445,212 457,206 457,218" />
+            <circle cx="400" cy="166" r="5.5" />
+            <circle cx="550" cy="212" r="5.5" />
+            <text class="svg-tick" x="300" y="158" text-anchor="end" fill="var(--cool)">−0.12</text>
+            <text class="svg-tick" x="437" y="204" text-anchor="end" fill="var(--cool)">−0.70 too harsh</text>
+          </g>
+        </svg>
+      </div>
+      <p class="caption">MEAN SIGNED ERROR BY HUMAN GRADE, 876 RESPONSES. DOT = WHAT THE HUMAN SAID. ARROW = WHERE THE SCORER PUT THEM.</p>
+    </figure>
+
+    <p>At grade 2, the error and the <em>average</em> error are the same size — which is only possible if <strong>every single grade-2 response was marked too high.</strong> Not most. All 42.</p>
+    <div class="hit">
+      <span class="hit-fig">81.5%</span>
+      <span class="hit-txt">of guesses land within half a grade of the human. That sounds fine. It hides the fact that the misses are all in the same direction, at exactly the point where a pass/fail line would sit.</span>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="chapno">06 — The scare</span>"Bad transcripts cause bad grades!" — no they don't</h2>
+    <p>Obvious worry: when Whisper mishears someone, does that person get a wrong grade?</p>
+    <p>The first check said <strong>yes</strong>. Messy transcripts went with over-generous grades — a correlation (<em>r</em>, the Pearson correlation coefficient) of <span class="num">+0.15</span>, and the statistics looked convincing.</p>
+    <p>It was fake. Here's the trap:</p>
+    <ul class="plain">
+      <li>Whisper struggles more with weaker speakers. (True.)</li>
+      <li>The scorer is too generous to weaker speakers. (True — that's chapter 05.)</li>
+      <li>So "messy transcript" and "over-generous grade" both just mean <strong>"weak speaker"</strong>.</li>
+    </ul>
+    <p>Hold ability level constant, and the effect vanishes: <span class="num">r = −0.01</span>. The speech-to-text was innocent. It was ability wearing a disguise.</p>
+    <p>The name for this is <strong>mediation</strong> — when A looks like it causes B, but really C is quietly causing both. The fix is a <strong>partial correlation</strong>: measure A against B again while holding C still.</p>
+    <div class="why">
+      <span class="why-label">Why we did it that way</span>
+      <p>Published as-is, that first number would have been a headline about AI unfairness that wasn't real. This is the single best argument for the whole project: the careful check is what stopped us publishing a fake alarm.</p>
+    </div>
+    <h3>Then we pushed on it twice more</h3>
+    <p><strong>Once by error type.</strong> Word Error Rate lumps all mistakes together. But the machine's favourite feature is <em>how many words you said</em> — so words being <em>dropped</em> should hurt, while words being <em>swapped</em> shouldn't. Split apart, dropped words do keep a small effect: <span class="num">−0.12</span>. And the minus sign matters — it means dropped words cause <strong>under</strong>-scoring, the <em>opposite</em> of the original scare.</p>
+    <p>It's tiny — about 1% of the error, against a squashing problem worth nearly a whole grade. So it changes the wording, not the conclusion.</p>
+    <p><strong>Once with a totally different machine</strong> — see chapter 08. Same result.</p>
+  </section>
+
+  <section>
+    <h2><span class="chapno">07 — The embarrassing baselines</span>Just counting words gets you 90% of the way</h2>
+    <p>We kept a deliberately stupid model in every results table: <strong>count the words, ignore everything else.</strong></p>
+    <div class="hit">
+      <span class="hit-fig cool">0.500 / 0.558</span>
+      <span class="hit-txt">Word-counting scores 0.500. All seventeen carefully-built features score 0.558. Months of feature engineering bought <span class="num">+0.058</span>.</span>
+    </div>
+    <p>That's not a failure, it's the honest measurement. It means the system is largely measuring <em>how much someone talks</em>, which is a known property of fluency features and now a written-down limitation rather than a secret.</p>
+    <div class="why">
+      <span class="why-label">Why we did it that way</span>
+      <p>Dumb baselines appear in every single results table, on purpose. Compare a new model only to "guess the average" and everything looks brilliant. The rule in the report is now: beat word-counting, or you haven't done anything.</p>
+    </div>
+    <h3>And one thing nobody was measuring at all</h3>
+    <p>The human transcripts mark every "um" and "uh". Across 600 responses there are <strong>3,058</strong> of them.</p>
+    <p>Whisper transcribed <strong>zero</strong>. Not few — zero. It's built to tidy them away.</p>
+    <p>Hesitation is a real signal of proficiency (<span class="num">r = −0.25</span> in the human transcripts). So this is probably the biggest speech-to-text harm in the whole system — and <strong>no error-rate score charges anything for it</strong>, because the standard comparison strips "um" out of both sides before comparing.</p>
+  </section>
+
+  <section>
+    <h2><span class="chapno">08 — The obvious next idea</span>We tried a language model. It lost.</h2>
+    <p>Fair objection to everything above: none of these features <em>read what the person said</em>. They count pauses and words. Maybe all the conclusions are artefacts of that blindness.</p>
+    <p>So we took a small language model — Qwen2.5, 1.5 billion parameters — and fine-tuned it on the transcripts using LoRA (Low-Rank Adaptation), on the laptop, so it outputs a grade. Same responses, same rules, head to head.</p>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Scorer</th><th>Agreement — QWK</th></tr>
+        </thead>
+        <tbody>
+          <tr class="best"><td>Random Forest — 17 features</td><td>0.558</td></tr>
+          <tr><td>Ridge regression — 17 features</td><td>0.548</td></tr>
+          <tr class="floor"><td>Ridge regression — word count only</td><td>0.500</td></tr>
+          <tr><td>Neural net — multi-layer perceptron</td><td>0.475</td></tr>
+          <tr><td>LoRA fine-tuned language model</td><td>0.446</td></tr>
+          <tr class="floor"><td>Same language model, untrained</td><td>0.144</td></tr>
+          <tr class="floor"><td>Guess the average every time</td><td>0.000</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="caption">QWK = QUADRATIC WEIGHTED KAPPA, AGREEMENT WITH HUMAN MARKERS. ALL FIGURES ON IDENTICAL HELD-OUT RESPONSES UNDER IDENTICAL RULES. "RIDGE REGRESSION" IS A STRAIGHT-LINE FIT; "RANDOM FOREST" IS A COMMITTEE OF FLOWCHARTS.</p>
+
+    <p>It came <strong>fifth</strong>. Below the word-counting baseline. And it made the squashing problem <em>worse</em> — <span class="num">+1.03</span> and <span class="num">−1.01</span> at the two ends, against the Random Forest's <span class="num">+0.96</span> / <span class="num">−0.70</span>.</p>
+
+    <h3>But did the training do anything at all?</h3>
+    <p>The first write-up couldn't answer that, because 0.446 had only ever been compared against <em>other</em> systems. So we ran the same model with the training switched off. It scores <span class="num">0.144</span>.</p>
+    <div class="hit">
+      <span class="hit-fig cool">+0.302</span>
+      <span class="hit-txt">The training roughly tripled its performance. The model still lost — but it lost because of its ceiling, not because the training failed. Two very different stories, and only one is true.</span>
+    </div>
+
+    <div class="why">
+      <span class="why-label">Why we did it that way</span>
+      <p>The model runs entirely on the laptop, never in the cloud. Not to save money — the corpus licence forbids sending the data to any AI service that might train on it. Local was the <em>legal</em> option, not just the cheap one. The trained weights stay off the internet for the same reason.</p>
+    </div>
+
+    <p>And the point of the whole exercise: this machine reads <strong>nothing but the words</strong>, and the speech-to-text scare from chapter 06 <em>still</em> comes back innocent (<span class="num">+0.16</span> raw, <span class="num">−0.04</span> once ability is controlled). The finding wasn't an artefact. Question closed.</p>
+  </section>
+
+  <section>
+    <h2><span class="chapno">09 — Two honest gaps</span>What we could not measure, and what we didn't build</h2>
+
+    <h3>A reliability score that couldn't exist</h3>
+    <p>The plan said: run the AI grader twice, see if it agrees with itself. Reasonable.</p>
+    <p>Except our grader is fully deterministic — no randomness anywhere. Run it twice and you get <em>bit-identical</em> answers. The score would have been a flawless <span class="num">1.0</span>, it would have satisfied the plan, and it would have measured <strong>absolutely nothing</strong>.</p>
+    <p>So we measured something real instead: reword the instructions harmlessly — same task, band labels renamed — and see if it still agrees with itself. It doesn't, much. Renaming the labels moves <strong>60%</strong> of its answers.</p>
+    <p>That's still useful, because agreeing with yourself is a <em>ceiling</em> on agreeing with anyone else. This model's ceiling is <span class="num">0.512</span> and it scores <span class="num">0.144</span> against humans — so it's nowhere near its own limit. Its problem is that it's wrong, not that it's wobbly.</p>
+
+    <h3>One thing we promised and never built</h3>
+    <p>The original plan asked for examples of the machine's <em>written feedback</em>, labelled useful / vague / unfair.</p>
+    <p>No feedback generator was ever built. Every part of this project outputs a number; nothing outputs a sentence. So there was nothing to label.</p>
+    <div class="why">
+      <span class="why-label">Why we did it that way</span>
+      <p>It's written into the design document as a dated, signed-off cut — not deleted. Feedback quality is a genuine evaluation dimension and this project does not cover it. Leaving the promise visible next to the retraction is the whole habit this project is trying to practise.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="chapno">10 — Where it landed</span>The final scorecard</h2>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Question</th><th>Answer</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Does it agree with human markers?</td><td>Moderately — QWK 0.558</td></tr>
+          <tr><td>Exactly right?</td><td>34.1%</td></tr>
+          <tr><td>Within half a grade?</td><td>81.5%</td></tr>
+          <tr><td>Within a full grade?</td><td>97.7%</td></tr>
+          <tr><td>Is the error even across ability?</td><td class="up">No — squashed to the middle</td></tr>
+          <tr><td>Does bad speech-to-text bias grades?</td><td class="down">No (checked three ways)</td></tr>
+          <tr><td>Does poor audio quality bias grades?</td><td class="down">No sign of it — but thin data</td></tr>
+          <tr><td>Does first language bias grades?</td><td class="up">Unknown — data doesn't exist</td></tr>
+          <tr><td>Worst-served speaker</td><td class="up">Off by 1.71 grades</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Written up as three documents: a <strong>model card</strong> (what it is, what it must not be used for), an <strong>evaluation report</strong> (every number, every caveat), and an <strong>error analysis</strong> (what it does when it fails, and who to blame).</p>
+    <div class="why">
+      <span class="why-label">Why we did it that way</span>
+      <p>The corpus licence forbids publishing any learner's words. So the error analysis can't do the normal thing — quote five bad transcripts next to their grades. It reports five <em>types</em> of failure with counts and averages instead. One type — "speech-to-text produced nothing at all" — turned out to have <strong>zero</strong> cases, and is reported as zero rather than dropped. A failure everyone assumes exists, that doesn't, is a finding.</p>
+    </div>
+  </section>
+
+  <div class="verdict">
+    <p class="eyebrow">The bottom line</p>
+    <h2>The best result here is a "no"</h2>
+    <p>The grader is mediocre and the fancy upgrade lost to word-counting. Both are written down plainly, with the numbers.</p>
+    <p>What the project actually produced is a set of results that would have been reported wrongly by anyone moving faster: a fake fairness alarm that dissolved under one control, a self-consistency score that would have read as perfect while measuring nothing, a promising first number that shrank when the data grew, and a "biggest problem" — grade squashing — that no accuracy headline shows and no speech-to-text improvement would fix.</p>
+    <p>None of that is a leaderboard win. It is the report that leaderboard wins usually skip.</p>
+  </div>
+
+  <footer>
+    DATA: SPEAK &amp; IMPROVE CORPUS 2025 (CAMBRIDGE UNIVERSITY PRESS &amp; ASSESSMENT / ELiT), RESEARCH LICENCE. NO CORPUS AUDIO, TRANSCRIPTS OR PER-SPEAKER DATA APPEAR IN THIS DOCUMENT OR THE PUBLIC REPOSITORY.<br>
+    SYSTEM: WHISPER-SMALL → 17 FLUENCY &amp; PROSODY FEATURES → RANDOM FOREST. ALL FIGURES OUT-OF-FOLD, SPEAKER-GROUPED 5-FOLD CROSS-VALIDATION.<br>
+    NOT FOR USE IN ANY REAL ASSESSMENT DECISION ABOUT ANY REAL CANDIDATE.
+  </footer>
+
+</div>

@@ -40,6 +40,8 @@ variance against a band-compression term of nearly a full band, so it refines th
 rather than the conclusion. Notebooks: `01`–`05`. **Deliverables: `reports/model_card.md`,
 `reports/evaluation_report.md` and `reports/error_analysis.md`.**
 Design: `docs/design.md`. Session log: `JOURNAL.md`.
+**New to the project? Start with `docs/explainer.md`** — the whole thing in plain English,
+every headline figure, and the reasoning behind each decision.
 
 ## Data and licence
 
@@ -58,5 +60,6 @@ scripts/     download_dev_audio, transcribe_dev, extract_prosody, finetune_lora 
              error_analysis (regenerates the error-analysis aggregates),
              licence_scan (pre-push: ids and verbatim transcript runs, vs the corpus)
 tests/       pytest on synthetic fixtures (no corpus data)
+docs/        design (+ amendments), explainer (plain-English walkthrough), session reports
 reports/     data_gates, model_card, evaluation_report, error_analysis
 ```
